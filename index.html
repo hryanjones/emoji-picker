@@ -1653,7 +1653,6 @@ searchBox.focus();
 
 function generateEmojiData() {
     const favorites = getSavedFavorites();
-    console.log('saved favorites', favorites);
     const nonFavorites = rawEmojiData
         .split('\n')
         .filter(emojiPlusKeywords => !favorites.includes(emojiPlusKeywords)); // remove favorites
