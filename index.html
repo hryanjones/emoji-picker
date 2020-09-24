@@ -6,9 +6,6 @@
     html, body {
         font-family: sans-serif;
     }
-    #search {
-        font-size: 60%;
-    }
     #results {
         display: flex;
         flex-wrap: wrap;
@@ -44,7 +41,10 @@
 <h1 style="display: flex; justify-content: space-between; align-items: baseline;">
     <span>
         Emoji Picker
-        &nbsp;&nbsp;<input id="search" type="text" placeholder="search emoji keywords"/>
+        <div style="font-size: 60%; display: inline-block; margin-left: 20px; position: relative;">
+            <input id="search" style="min-width: 222px;" type="text" placeholder="search emoji keywords"/>
+            <div id="search-clear" style="position: absolute; right: 0px; top: 0px; font-size: 66%; padding: 5px; cursor: pointer">✖️</div>
+        </div>
     </span>
 
     <a style="font-size: 60%;" href="https://github.com/hryanjones/emoji-picker">
@@ -65,6 +65,7 @@
 <script>
 
 const searchBox = document.getElementById('search');
+const searchClearButton = document.getElementById('search-clear');
 const resultsBox = document.getElementById('results');
 
 const emojiClassNames = ['keywords', 'emoji', 'emoji-container'];
@@ -1645,6 +1646,7 @@ const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, te
 const emojisWithKeywords = generateEmojiData();
 
 searchBox.addEventListener('input', handleSearch);
+searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
 searchBox.focus();
@@ -1667,50 +1669,51 @@ function getSavedFavorites() {
 
 function handleSearch(event) {
     const searchText = (event && event.target && event.target.value || '').trim().toLowerCase();
-    if (searchText.length === 1) return;
     const emojiList = getEmojiFromSearch(searchText);
     renderResults(emojiList, searchText);
-}
 
-function getEmojiFromSearch(searchText) {
-    if (!searchText) {
-        return emojisWithKeywords;
+    function getEmojiFromSearch(searchText) {
+        if (!searchText) {
+            return emojisWithKeywords;
+        }
+        return emojisWithKeywords
+            .filter(emojiMatchesSearch);
+
+        function emojiMatchesSearch(emojiPlusKeywords) {
+            return emojiPlusKeywords.includes(searchText);
+        }
     }
-    return emojisWithKeywords
-        .filter(emojiMatchesSearch);
+    function renderResults(emojiPlusKeywordsList, searchText) {
+        resultsBox.innerHTML = emojiPlusKeywordsList.map(renderSingleEmoji).join('');
 
-    function emojiMatchesSearch(emojiPlusKeywords) {
-        return emojiPlusKeywords.includes(searchText);
-    }
-}
+        function renderSingleEmoji(emojiPlusKeywords) {
+            const [emoji, keywords] = emojiPlusKeywords.split(':');
+            return `
+                <div
+                    class="emoji-container"
+                    title="click to copy"
+                    data-emoji="${emoji}"
+                    data-emoji-plus-keywords="${emojiPlusKeywords}"
+                >
+                    <div class="emoji">${emoji}</div>
+                    <div class="keywords">${emphasizeSearchInKeywords(keywords)}</div>
+                </div>
+            `;
+        }
 
-function getEmoji(emojiPlusKeywords) {
-    return emojiPlusKeywords.split(':')[0];
-}
-
-function renderResults(emojiPlusKeywordsList, searchText) {
-    resultsBox.innerHTML = emojiPlusKeywordsList.map(renderSingleEmoji).join('');
-
-    function renderSingleEmoji(emojiPlusKeywords) {
-        const [emoji, keywords] = emojiPlusKeywords.split(':');
-        return `
-            <div
-                class="emoji-container"
-                title="click to copy"
-                data-emoji="${emoji}"
-                data-emoji-plus-keywords="${emojiPlusKeywords}"
-            >
-                <div class="emoji">${emoji}</div>
-                <div class="keywords">${boldSearchInKeywords(keywords)}</div>
-            </div>
-        `;
-    }
-
-    function boldSearchInKeywords(keywords) {
-        if (!searchText) return keywords;
-        return keywords.split(searchText).join(`<b>${searchText}</b>`);
+        function emphasizeSearchInKeywords(keywords) {
+            if (!searchText) return keywords;
+            return keywords.split(searchText).join(`<b><u>${searchText}</u></b>`);
+        }
     }
 }
+
+function clearSearch() {
+    searchBox.value = '';
+    searchBox.focus();
+    handleSearch();
+}
+
 
 function copyEmoji(event) {
     const container = getContainerFromEvent();
