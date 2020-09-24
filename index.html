@@ -3,6 +3,12 @@
 <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1">
 <title>Emoji Picker</title>
 <style>
+    html, body {
+        font-family: sans-serif;
+    }
+    #search {
+        font-size: 60%;
+    }
     #results {
         display: flex;
         flex-wrap: wrap;
@@ -21,6 +27,7 @@
         width: 256px;
         background: white;
         font-size: 180%;
+        padding: 10px 0px;
     }
     .emoji {
         font-size: 200%;
@@ -31,8 +38,16 @@
     }
 </style>
 
-<h1>Emoji Picker</h1>
-<input id="search" type="text" placeholder="search emoji keywords"/>
+<h1 style="display: flex; justify-content: space-between;">
+    <span>
+        Emoji Picker
+        &nbsp;&nbsp;<input id="search" type="text" placeholder="search emoji keywords"/>
+    </span>
+
+    <a style="font-size: 60%;" href="https://github.com/hryanjones/emoji-picker">
+        code
+    </a>
+</h1>
 <div id="results">
 
 <!--
@@ -1626,6 +1641,7 @@ const emojisWithKeywords = `💯:100, score, perfect, numbers, century, exam, qu
 searchBox.addEventListener('input', handleSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
+searchBox.focus();
 
 
 
