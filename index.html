@@ -19,11 +19,12 @@
         margin-right: 20px;
         margin-top: 10px;
         align-items: center;
+        position: relative; /* so .copied shows up relative to this */
     }
     .emoji-container.copied::before {
         content: 'Copied to clipboard';
         position: absolute;
-        left: 58px;
+        left: 50px;
         width: 256px;
         background: white;
         font-size: 180%;
@@ -32,6 +33,8 @@
     .emoji {
         font-size: 200%;
         margin-right: 10px;
+        height: 40px; /* fixed height and width because some emojis don't conform to this, at least on my machine */
+        width: 40px;
     }
     .keywords {
         width: 256px;
@@ -65,9 +68,10 @@ const searchBox = document.getElementById('search');
 const resultsBox = document.getElementById('results');
 
 const emojiClassNames = ['keywords', 'emoji', 'emoji-container'];
+const LOCAL_STORAGE_KEY = 'hryanjones/emoji-picker/favorites';
 
 // from https://listemoji.com/cheat-sheet#
-const emojisWithKeywords = `💯:100, score, perfect, numbers, century, exam, quiz, test, pass, hundred
+const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, test, pass, hundred
 🔢:1234, numbers, blue-square
 😀:grinning, face, smile, happy, joy, :D, grin
 😬:grimacing, face, grimace, teeth
@@ -1636,13 +1640,29 @@ const emojisWithKeywords = `💯:100, score, perfect, numbers, century, exam, qu
 🇿🇲:zambia, zm, flag, nation, country, banner
 🇿🇼:zimbabwe, zw, flag, nation, country, banner
 🇺🇳:united_nations, un, flag, banner
-🏴‍☠️:pirate_flag, skull, crossbones, flag, banner`.split('\n');
+🏴‍☠️:pirate_flag, skull, crossbones, flag, banner`;
+
+const emojisWithKeywords = generateEmojiData();
 
 searchBox.addEventListener('input', handleSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
 searchBox.focus();
 
+function generateEmojiData() {
+    const favorites = getSavedFavorites();
+    console.log('saved favorites', favorites);
+    const nonFavorites = rawEmojiData
+        .split('\n')
+        .filter(emojiPlusKeywords => !favorites.includes(emojiPlusKeywords)); // remove favorites
+
+    return favorites.concat(nonFavorites);
+
+}
+function getSavedFavorites() {
+    return JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY) || '[]')
+        .filter(shouldBeString => shouldBeString && typeof shouldBeString === 'string');
+}
 
 
 function handleSearch(event) {
@@ -1674,7 +1694,12 @@ function renderResults(emojiPlusKeywordsList, searchText) {
     function renderSingleEmoji(emojiPlusKeywords) {
         const [emoji, keywords] = emojiPlusKeywords.split(':');
         return `
-            <div class="emoji-container" title="click to copy" data-emoji="${emoji}">
+            <div
+                class="emoji-container"
+                title="click to copy"
+                data-emoji="${emoji}"
+                data-emoji-plus-keywords="${emojiPlusKeywords}"
+            >
                 <div class="emoji">${emoji}</div>
                 <div class="keywords">${boldSearchInKeywords(keywords)}</div>
             </div>
@@ -1687,7 +1712,6 @@ function renderResults(emojiPlusKeywordsList, searchText) {
     }
 }
 
-
 function copyEmoji(event) {
     const container = getContainerFromEvent();
     const emoji = container && container.dataset.emoji;
@@ -1695,6 +1719,7 @@ function copyEmoji(event) {
     window.copyToClipboard(emoji);
     searchBox.focus();
     addCopiedIndicator(container);
+    saveFavorite(container.dataset.emojiPlusKeywords);
 
     function getContainerFromEvent() {
         let target = event.target;
@@ -1714,6 +1739,16 @@ function copyEmoji(event) {
             el.classList.remove('copied');
         });
         container.classList.add('copied');
+    }
+
+    function saveFavorite(newFavorite) {
+        const favorites = getSavedFavorites();
+        const indexOfNewFavorite = favorites.indexOf(newFavorite);
+        if (indexOfNewFavorite !== -1) {
+            favorites.splice(indexOfNewFavorite, 1);
+        }
+        favorites.unshift(newFavorite);
+        window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(favorites));
     }
 }
 
