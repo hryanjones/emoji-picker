@@ -7,8 +7,8 @@
         font-family: sans-serif;
     }
     #results {
-        display: flex;
-        flex-wrap: wrap;
+        /* display: flex;
+        flex-wrap: wrap; */
     }
     .emoji-container {
         display: flex;
@@ -18,7 +18,7 @@
         align-items: center;
         position: relative; /* so .copied shows up relative to this */
         height: 56px;
-        width: 306px;
+        /* width: 306px; */
     }
     .emoji-container.copied::before {
         content: 'Copied to clipboard';
@@ -1647,7 +1647,7 @@ const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, te
 
 const emojisWithKeywords = generateEmojiData();
 
-searchBox.addEventListener('input', handleSearch);
+searchBox.addEventListener('input', debounce(handleSearch, 100));
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
@@ -1667,6 +1667,18 @@ function getSavedFavorites() {
         .filter(shouldBeString => shouldBeString && typeof shouldBeString === 'string');
 }
 
+function debounce(func, wait) { // stolen and modified from https://davidwalsh.name/javascript-debounce-function
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function () {
+            timeout = null;
+            func.apply(context, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
 
 function handleSearch(event) {
     const searchText = (event && event.target && event.target.value || '').trim().toLowerCase();
