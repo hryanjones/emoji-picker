@@ -1647,7 +1647,8 @@ const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, te
 🇺🇳:united_nations, un, flag, banner
 🏴‍☠️:pirate_flag, skull, crossbones, flag, banner`;
 
-const emojisWithKeywords = generateEmojiData();
+let emojisWithKeywords
+generateEmojiData();
 
 searchBox.addEventListener('input', debounce(handleSearch, 100));
 searchClearButton.addEventListener('click', clearSearch);
@@ -1661,8 +1662,7 @@ function generateEmojiData() {
         .split('\n')
         .filter(emojiPlusKeywords => !favorites.includes(emojiPlusKeywords)); // remove favorites
 
-    return favorites.concat(nonFavorites);
-
+    emojisWithKeywords = favorites.concat(nonFavorites);
 }
 function getSavedFavorites() {
     return JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY) || '[]')
@@ -1726,6 +1726,7 @@ function handleSearch(event) {
 function clearSearch() {
     searchBox.value = '';
     searchBox.focus();
+    generateEmojiData();
     handleSearch();
 }
 
