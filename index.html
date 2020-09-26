@@ -1,8 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
 <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😂</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😂</text></svg>">
 <title>Emoji Picker</title>
 <style>
     html, body {
@@ -1651,6 +1650,7 @@ let emojisWithKeywords
 generateEmojiData();
 
 searchBox.addEventListener('input', debounce(handleSearch, 100));
+searchBox.addEventListener('keyup', clearOnEscape);
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
@@ -1721,6 +1721,10 @@ function handleSearch(event) {
             return keywords.split(searchText).join(`<b><u>${searchText}</u></b>`);
         }
     }
+}
+
+function clearOnEscape(event) {
+    if (event.keyCode === 27) clearSearch();
 }
 
 function clearSearch() {
