@@ -72,7 +72,6 @@ const searchBox = document.getElementById('search');
 const searchClearButton = document.getElementById('search-clear');
 const resultsBox = document.getElementById('results');
 
-const emojiClassNames = ['keywords', 'emoji', 'emoji-container'];
 const LOCAL_STORAGE_KEY = 'hryanjones/emoji-picker/favorites';
 
 // from https://listemoji.com/cheat-sheet#
@@ -1652,6 +1651,7 @@ generateEmojiData();
 
 searchBox.addEventListener('input', debounce(handleSearch, 100));
 searchBox.addEventListener('keyup', clearOnEscape);
+document.addEventListener('keyup', clearOnEscape);
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
 handleSearch();
@@ -1699,6 +1699,7 @@ function handleSearch(event) {
             return emojiPlusKeywords.includes(searchText);
         }
     }
+
     function renderResults(emojiPlusKeywordsList, searchText) {
         resultsBox.innerHTML = emojiPlusKeywordsList.map(renderSingleEmoji).join('');
 
@@ -1731,13 +1732,12 @@ function clearOnEscape(event) {
 function clearSearch() {
     searchBox.value = '';
     searchBox.focus();
-    generateEmojiData();
     handleSearch();
 }
 
 
 function copyEmoji(event) {
-    const container = getContainerFromEvent();
+    const container = getEmojiContainer(event.target);
     const emoji = container && container.dataset.emoji;
     if (!emoji) return;
     window.copyToClipboard(emoji);
@@ -1745,16 +1745,13 @@ function copyEmoji(event) {
     addCopiedIndicator(container);
     saveFavorite(container.dataset.emojiPlusKeywords);
 
-    function getContainerFromEvent() {
-        let target = event.target;
-        const targetClassName = target && target.className;
-        if (!emojiClassNames.includes(targetClassName)) {
-            return null;
+    function getEmojiContainer(element, tryNumber = 0) {
+        const elementClass = element && element.className;
+        if (elementClass === 'emoji-container') {
+            return element;
         }
-        if (targetClassName === 'emoji-container') {
-            return target;
-        }
-        return target.parentElement;
+        if (tryNumber > 3) return null; // 3 is the max depth of the tree, see `renderSingleEmoji`
+        return getEmojiContainer(element.parentElement, tryNumber + 1);
     }
 
     function addCopiedIndicator(container) {
