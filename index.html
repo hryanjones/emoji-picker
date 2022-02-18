@@ -11,6 +11,12 @@
         display: flex;
         flex-wrap: wrap;
     }
+    #results.hide-descriptions .keywords {
+        display: none;
+    }
+    #results.hide-descriptions .emoji-container {
+        width: 43px;
+    }
     .emoji-container {
         display: flex;
         cursor: pointer;
@@ -21,17 +27,34 @@
         height: 56px;
         width: 306px;
     }
+    .emoji-container.copied,
+    .emoji-container.copied::before {
+        background: Khaki;
+        border-radius: 5px;
+    }
     .emoji-container.copied::before {
         content: 'Copied to clipboard';
         position: absolute;
-        left: 50px;
-        width: 256px;
-        background: white;
+        left: 40px;
+        width: 258px;
+        height: 36px;
         font-size: 180%;
-        padding: 10px 0px;
+        padding: 10px 0px 10px 10px;
         pointer-events: none; /* allows click again to copy again */
+        z-index: 1; /* when descriptions hidden */
+
+        /* below is for fading out*/
+        opacity: 0;
+        visibility: visible;
+        animation: fade 4s linear;
     }
+    @keyframes fade {
+        0%,100% { opacity: 0 }
+        5%,60% { opacity: 1 }
+    }
+
     .emoji {
+        padding-left: 2px;
         font-size: 200%;
         margin-right: 10px;
         height: 40px; /* fixed height and width because some emojis don't conform to this, at least on my machine */
@@ -45,10 +68,16 @@
 <h1 style="display: flex; justify-content: space-between; align-items: baseline;">
     <span>
         Emoji Picker
-        <div style="font-size: 60%; display: inline-block; margin-left: 20px; position: relative;">
+        &nbsp;
+        <div style="font-size: 60%; display: inline-block; position: relative;">
             <input id="search" style="min-width: 222px;" type="text" placeholder="search emoji keywords"/>
             <div id="search-clear" style="position: absolute; right: 0px; top: 0px; font-size: 66%; padding: 5px; cursor: pointer">✖️</div>
         </div>
+        &nbsp;
+        <label style="font-size: 45%; font-weight: normal; display: inline-block;">
+            <input id="toggle-descriptions" type="checkbox" checked>
+            show descriptions
+        </label>
     </span>
 
     <a style="font-size: 60%;" href="https://github.com/hryanjones/emoji-picker">
@@ -71,8 +100,10 @@
 const searchBox = document.getElementById('search');
 const searchClearButton = document.getElementById('search-clear');
 const resultsBox = document.getElementById('results');
+const descriptionsToggler = document.getElementById('toggle-descriptions');
 
 const LOCAL_STORAGE_KEY = 'hryanjones/emoji-picker/favorites';
+const LOCAL_STORAGE_KEY_SHOW_DESCRIPTIONS = 'hryanjones/emoji-picker/show-descriptions';
 
 // from https://listemoji.com/cheat-sheet#
 const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, test, pass, hundred
@@ -1648,12 +1679,14 @@ const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, te
 
 let emojisWithKeywords
 generateEmojiData();
+getSavedDescriptionState();
 
 searchBox.addEventListener('input', debounce(handleSearch, 100));
 searchBox.addEventListener('keyup', clearOnEscape);
 document.addEventListener('keyup', clearOnEscape);
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
+descriptionsToggler.addEventListener('change', toggleDescriptions);
 handleSearch();
 searchBox.focus();
 
@@ -1668,6 +1701,12 @@ function generateEmojiData() {
 function getSavedFavorites() {
     return JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY) || '[]')
         .filter(shouldBeString => shouldBeString && typeof shouldBeString === 'string');
+}
+
+function getSavedDescriptionState() {
+    const shouldShow = JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY_SHOW_DESCRIPTIONS) || 'true');
+    descriptionsToggler.checked = shouldShow;
+    toggleDescriptions();
 }
 
 function debounce(func, wait) { // stolen and modified from https://davidwalsh.name/javascript-debounce-function
@@ -1746,11 +1785,12 @@ function copyEmoji(event) {
     saveFavorite(container.dataset.emojiPlusKeywords);
 
     function getEmojiContainer(element, tryNumber = 0) {
-        const elementClass = element && element.className;
-        if (elementClass === 'emoji-container') {
+        if (!element || tryNumber > 3) { // 3 is the max depth of the tree, see `renderSingleEmoji`
+            return null;
+        }
+        if (element.className === 'emoji-container') {
             return element;
         }
-        if (tryNumber > 3) return null; // 3 is the max depth of the tree, see `renderSingleEmoji`
         return getEmojiContainer(element.parentElement, tryNumber + 1);
     }
 
@@ -1771,6 +1811,22 @@ function copyEmoji(event) {
         favorites.unshift(newFavorite);
         window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(favorites));
     }
+}
+
+function toggleDescriptions(event) {
+    const shouldShow = descriptionsToggler.checked;
+    const classList = resultsBox.classList;
+    const currentlyHiding = classList.contains('hide-descriptions');
+    if (event) {
+        window.localStorage.setItem(LOCAL_STORAGE_KEY_SHOW_DESCRIPTIONS, shouldShow);
+    }
+    if (shouldShow && currentlyHiding) {
+        classList.remove('hide-descriptions');
+    }
+    if (!shouldShow && !currentlyHiding) {
+        classList.add('hide-descriptions');
+    }
+    searchBox.focus();
 }
 
 function getElementsByClassName(className) {
