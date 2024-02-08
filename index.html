@@ -2114,7 +2114,7 @@ generateEmojiData();
 getSavedDescriptionState();
 
 searchBox.addEventListener('input', debounce(handleSearch, 100));
-searchBox.addEventListener('keyup', clearOnEscape);
+searchBox.addEventListener('keyup', applyShortcuts);
 document.addEventListener('keyup', clearOnEscape);
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
@@ -2193,6 +2193,18 @@ function handleSearch(event) {
             if (!searchText) return keywords;
             return keywords.split(searchText).join(`<b><u>${searchText}</u></b>`);
         }
+    }
+}
+
+function applyShortcuts(event) {
+    clearOnEscape(event);
+    copyOnEnter(event);
+}
+
+function copyOnEnter(event) {
+    if (event.key === 'Enter' || event.keyCode === 13) {
+        console.log('here')
+        document.querySelector('.emoji-container').click();
     }
 }
 
