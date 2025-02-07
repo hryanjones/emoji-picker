@@ -2109,17 +2109,21 @@ BLAH
 🇹🇦:tristan_da_cunha, flag
 🇺🇲:us_outlying_islands, flag`;
 
+const searchFromAnchor = decodeURIComponent(location.hash);
 let emojisWithKeywords
 generateEmojiData();
 getSavedDescriptionState();
+if (searchFromAnchor) {
+    searchBox.value = searchFromAnchor.replace(/^#/, '').trim();
+}
 
-searchBox.addEventListener('input', debounce(handleSearch, 100));
+searchBox.addEventListener('input', debounce(handleSearchEvent, 100));
 searchBox.addEventListener('keyup', applyShortcuts);
 document.addEventListener('keyup', clearOnEscape);
 searchClearButton.addEventListener('click', clearSearch);
 resultsBox.addEventListener('click', copyEmoji);
 descriptionsToggler.addEventListener('change', toggleDescriptions);
-handleSearch();
+handleSearch(searchBox.value || '');
 searchBox.focus();
 
 function generateEmojiData() {
@@ -2154,8 +2158,13 @@ function debounce(func, wait) { // stolen and modified from https://davidwalsh.n
     };
 };
 
-function handleSearch(event) {
+function handleSearchEvent(event) {
     const searchText = (event && event.target && event.target.value || '').trim().toLowerCase();
+    location.hash = searchText && encodeURIComponent(searchText) || '';// update the hash with encoded search value
+    handleSearch(searchText);
+}
+
+function handleSearch(searchText) {
     const emojiList = getEmojiFromSearch(searchText);
     renderResults(emojiList, searchText);
 
@@ -2203,7 +2212,6 @@ function applyShortcuts(event) {
 
 function copyOnEnter(event) {
     if (event.key === 'Enter' || event.keyCode === 13) {
-        console.log('here')
         document.querySelector('.emoji-container').click();
     }
 }
@@ -2215,9 +2223,10 @@ function clearOnEscape(event) {
 function clearSearch() {
     searchBox.value = '';
     searchBox.focus();
-    handleSearch();
+    location.hash = '';
+    generateEmojiData(); // to now show most recently copied emojis on top
+    handleSearchEvent();
 }
-
 
 function copyEmoji(event) {
     const container = getEmojiContainer(event.target);
