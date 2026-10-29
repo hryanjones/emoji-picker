@@ -105,6 +105,15 @@ const descriptionsToggler = document.getElementById('toggle-descriptions');
 const LOCAL_STORAGE_KEY = 'hryanjones/emoji-picker/favorites';
 const LOCAL_STORAGE_KEY_SHOW_DESCRIPTIONS = 'hryanjones/emoji-picker/show-descriptions';
 
+const NO_MATCH = Infinity;
+const SEARCH_RANK = {
+    exactName: 0,
+    exactKeyword: 1,
+    namePrefix: 2,
+    allTokensAreWholeWords: 3,
+    partial: 4,
+};
+
 // from https://listemoji.com/cheat-sheet#
 const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, test, pass, hundred
 🔢:1234, numbers, blue-square
@@ -1214,7 +1223,7 @@ const rawEmojiData = `💯:100, score, perfect, numbers, century, exam, quiz, te
 🆑:cl, alphabet, words, red-square
 🅾️:o2, alphabet, red-square, letter
 🆘:sos, help, red-square, words, emergency, 911
-⛔:no_entry, limit, security, privacy, bad, denied, stop, circle
+⛔:no_entry, limit, security, privacy, bad, denied, blocked, stop, circle
 📛:name_badge, fire, forbid
 🚫:no_entry_sign, forbid, stop, limit, denied, disallow, circle
 ❌:x, no, delete, remove, cancel, red
@@ -2077,26 +2086,27 @@ function handleSearchEvent(event) {
 }
 
 function handleSearch(searchText) {
-    const emojiList = getEmojiFromSearch(searchText);
-    renderResults(emojiList, searchText);
+    const search = parseSearch(searchText);
+    const emojiList = getEmojiFromSearch(search);
+    renderResults(emojiList, search);
 
-    function getEmojiFromSearch(searchText) {
-        if (!searchText) {
+    function getEmojiFromSearch(search) {
+        if (!search.tokens.length) {
             return emojisWithKeywords;
         }
+        // sort is stable, so favorites stay first within each rank
         return emojisWithKeywords
-            .filter(emojiMatchesSearch);
-
-        function emojiMatchesSearch(emojiPlusKeywords) {
-            return emojiPlusKeywords.includes(searchText);
-        }
+            .map(emojiPlusKeywords => ({ emojiPlusKeywords, rank: rankSearchMatch(emojiPlusKeywords, search) }))
+            .filter(({ rank }) => rank !== NO_MATCH)
+            .sort((a, b) => a.rank - b.rank)
+            .map(({ emojiPlusKeywords }) => emojiPlusKeywords);
     }
 
-    function renderResults(emojiPlusKeywordsList, searchText) {
+    function renderResults(emojiPlusKeywordsList, search) {
         resultsBox.innerHTML = emojiPlusKeywordsList.map(renderSingleEmoji).join('');
 
         function renderSingleEmoji(emojiPlusKeywords) {
-            const [emoji, keywords] = emojiPlusKeywords.split(':');
+            const { emoji, keywords } = parseEmojiLine(emojiPlusKeywords);
             return `
                 <div
                     class="emoji-container"
@@ -2111,10 +2121,55 @@ function handleSearch(searchText) {
         }
 
         function emphasizeSearchInKeywords(keywords) {
-            if (!searchText) return keywords;
-            return keywords.split(searchText).join(`<b><u>${searchText}</u></b>`);
+            if (!search.tokens.length) return keywords;
+            const longestTokensFirst = [...search.tokens].sort((a, b) => b.length - a.length);
+            const tokenPattern = new RegExp(longestTokensFirst.map(escapeRegExp).join('|'), 'gi');
+            return keywords.replace(tokenPattern, match => `<b><u>${match}</u></b>`);
         }
     }
+}
+
+function parseSearch(searchText) {
+    const text = searchText.trim().toLowerCase();
+    return {
+        tokens: text.split(/\s+/).filter(Boolean),
+        compactText: removeSpacing(text),
+    };
+}
+
+function rankSearchMatch(emojiPlusKeywords, search) {
+    const line = emojiPlusKeywords.toLowerCase();
+    const matchesAllTokens = search.tokens.every(token => line.includes(token));
+    if (!matchesAllTokens) return NO_MATCH;
+
+    const { keywords } = parseEmojiLine(line);
+    const keywordList = keywords.split(',').map(keyword => keyword.trim());
+    const compactName = removeSpacing(keywordList[0]);
+    if (compactName === search.compactText) return SEARCH_RANK.exactName;
+    if (keywordList.some(keyword => removeSpacing(keyword) === search.compactText)) return SEARCH_RANK.exactKeyword;
+    if (compactName.startsWith(search.compactText)) return SEARCH_RANK.namePrefix;
+
+    const words = keywords.split(/[\s,_]+/);
+    if (search.tokens.every(token => words.includes(token))) return SEARCH_RANK.allTokensAreWholeWords;
+    return SEARCH_RANK.partial;
+}
+
+// names use underscores between words, so ignore both spaces and underscores when comparing
+function removeSpacing(text) {
+    return text.replace(/[\s_]+/g, '');
+}
+
+// splits on the first colon only, since some keywords contain colons, e.g. ":D"
+function parseEmojiLine(emojiPlusKeywords) {
+    const separatorIndex = emojiPlusKeywords.indexOf(':');
+    return {
+        emoji: emojiPlusKeywords.slice(0, separatorIndex),
+        keywords: emojiPlusKeywords.slice(separatorIndex + 1),
+    };
+}
+
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function applyShortcuts(event) {
