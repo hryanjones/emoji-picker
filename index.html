@@ -107,11 +107,12 @@ const LOCAL_STORAGE_KEY_SHOW_DESCRIPTIONS = 'hryanjones/emoji-picker/show-descri
 
 const NO_MATCH = Infinity;
 const SEARCH_RANK = {
-    exactName: 0,
-    exactKeyword: 1,
-    namePrefix: 2,
-    allTokensAreWholeWords: 3,
-    partial: 4,
+    favorite: 0,
+    exactName: 1,
+    exactKeyword: 2,
+    namePrefix: 3,
+    allTokensAreWholeWords: 4,
+    partial: 5,
 };
 
 // from https://listemoji.com/cheat-sheet#
@@ -2030,7 +2031,8 @@ BLAH
 // }
 
 const searchFromAnchor = decodeURIComponent(location.hash);
-let emojisWithKeywords
+let emojisWithKeywords;
+let favoriteEmojis;
 generateEmojiData();
 getSavedDescriptionState();
 if (searchFromAnchor) {
@@ -2048,14 +2050,15 @@ searchBox.focus();
 
 function generateEmojiData() {
     const rawEmojiLines = rawEmojiData.split('\n');
-    const favorites = getSavedFavorites(rawEmojiLines);
+    const favorites = getSavedFavorites();
+    favoriteEmojis = new Set(favorites);
     const nonFavorites = rawEmojiLines
-        .filter(emojiPlusKeywords => !favorites.includes(emojiPlusKeywords)); // remove favorites
+        .filter(emojiPlusKeywords => !favoriteEmojis.has(emojiPlusKeywords));
 
     emojisWithKeywords = favorites.concat(nonFavorites);
 }
-function getSavedFavorites(rawEmojiLines) {
-    const uniqueEmojiLines = new Set(rawEmojiLines);
+function getSavedFavorites() {
+    const uniqueEmojiLines = new Set(rawEmojiData.split('\n'));
     return JSON.parse(window.localStorage.getItem(LOCAL_STORAGE_KEY) || '[]')
         .filter(shouldBeString => shouldBeString && typeof shouldBeString === 'string' && uniqueEmojiLines.has(shouldBeString));
 }
@@ -2094,9 +2097,9 @@ function handleSearch(searchText) {
         if (!search.tokens.length) {
             return emojisWithKeywords;
         }
-        // sort is stable, so favorites stay first within each rank
+        // sort is stable, so favorites keep their most-recent-first order
         return emojisWithKeywords
-            .map(emojiPlusKeywords => ({ emojiPlusKeywords, rank: rankSearchMatch(emojiPlusKeywords, search) }))
+            .map(emojiPlusKeywords => ({ emojiPlusKeywords, rank: rankEmoji(emojiPlusKeywords, search) }))
             .filter(({ rank }) => rank !== NO_MATCH)
             .sort((a, b) => a.rank - b.rank)
             .map(({ emojiPlusKeywords }) => emojiPlusKeywords);
@@ -2135,6 +2138,13 @@ function parseSearch(searchText) {
         tokens: text.split(/\s+/).filter(Boolean),
         compactText: removeSpacing(text),
     };
+}
+
+function rankEmoji(emojiPlusKeywords, search) {
+    const searchRank = rankSearchMatch(emojiPlusKeywords, search);
+    if (searchRank === NO_MATCH) return NO_MATCH;
+    if (favoriteEmojis.has(emojiPlusKeywords)) return SEARCH_RANK.favorite;
+    return searchRank;
 }
 
 function rankSearchMatch(emojiPlusKeywords, search) {
